@@ -4,8 +4,7 @@
   config,
   inputs,
   ...
-}:
-let
+}: let
   buildInputs = with pkgs; [
     stdenv.cc.cc
     libuv
@@ -15,12 +14,13 @@ let
     xorg.libXrender
     expat
   ];
-in
-
-{
+in {
   env = {
     LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
   };
+  packages = with pkgs; [
+    entr
+  ];
   languages.python.enable = true;
   languages.python.uv.enable = true;
   languages.python.uv.sync.enable = true;
@@ -31,5 +31,4 @@ in
   enterTest = ''
     uv run python -c 'import build123d'
   '';
-
 }
