@@ -8,6 +8,8 @@ dependencies = [
     'build123d>=0.10.0',
     "cadquery-ocp-novtk>=7.9.3.1",
     "yacv-server==0.10.15",
+    'yacv-server',
+    'typer',
 ]
 
 [tool.setuptools]
