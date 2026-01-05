@@ -23,13 +23,13 @@ from build123d import (
     revolve,
 )
 
-button_diameter = 15
+button_diameter = 18
 button_height = 3
 button_hole_count = 4
 button_hole_diameter = 1.8
-button_hole_dist = 2.35
+button_hole_dist = 2.5
 button_hole_fillet = 1.2
-lift_height = 1
+lift_height = 2.5
 inner_sink_diameter = 40
 inner_sink_depth = 1.5
 
@@ -63,7 +63,7 @@ def build_part() -> Part:
                 make_face()
         revolve(axis=Axis.Z)
         with Locations((0, 0, -button_height/2)):
-            Cylinder(radius=button_hole_dist + button_hole_diameter,
+            Cylinder(radius=button_hole_dist,
                      height=lift_height)
             # inner sink
             with Locations((0, 0,
@@ -79,7 +79,8 @@ def build_part() -> Part:
     return button
 
 
-def main(mode: Annotated[RenderMode, typer.Argument()] = RenderMode.show):
+def main(mode: Annotated[RenderMode, typer.Argument()] = RenderMode.show,
+         filename: str = 'button.stl'):
     button = build_part()
 
     match mode:
@@ -87,7 +88,6 @@ def main(mode: Annotated[RenderMode, typer.Argument()] = RenderMode.show):
             from yacv_server import show
             show(button)
         case RenderMode.write:
-            filename = 'button.stl'
             export_stl(button.part, filename)
             print(f'Model rendered in "{filename}"')
         case RenderMode.noop:
