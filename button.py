@@ -1,6 +1,6 @@
+from dataclasses import dataclass
 from enum import StrEnum, auto
 from typing import Annotated
-from dataclasses import dataclass
 
 import typer
 from build123d import (
@@ -9,8 +9,8 @@ from build123d import (
     BuildLine,
     BuildPart,
     BuildSketch,
-    Cylinder,
     CounterSinkHole,
+    Cylinder,
     Line,
     Locations,
     Mode,
@@ -20,6 +20,8 @@ from build123d import (
     Sphere,
     VectorLike,
     export_stl,
+    extrude,
+    import_svg,
     make_face,
     revolve,
 )
@@ -36,6 +38,7 @@ class ButtonParams:
     lift_height: float
     inner_sink_diameter: float
     inner_sink_depth: float
+    shape_file: str | None = None
 
     def get_curve_for_button_section(self) -> tuple[list[VectorLike], list[float]]:
         pts = [
@@ -79,6 +82,18 @@ PRESETS: dict[str, ButtonParams] = {
         inner_sink_diameter=30,
         inner_sink_depth=1.5,
     ),
+    "sink_shape": ButtonParams(
+        button_diameter=22.5,
+        button_height=3,
+        button_hole_count=4,
+        button_hole_diameter=1.8,
+        button_hole_dist=2.5,
+        button_hole_fillet=1.2,
+        lift_height=3,
+        inner_sink_diameter=35,
+        inner_sink_depth=1.5,
+        shape_file="shape.svg",
+    ),
 }
 
 
@@ -91,19 +106,23 @@ class RenderMode(StrEnum):
 class ButtonPreset(StrEnum):
     sink = auto()
     sink_small = auto()
+    sink_shape = auto()
 
 
 def build_part(params: ButtonParams) -> Part:
     with BuildPart() as button:
-        with BuildSketch(Plane.XZ):
-            with Locations((0, params.lift_height)):
-                with BuildLine():
-                    l1 = Bezier(params.get_curve_for_button_section()[0])
-                    Line(l1 @ 1, l1 @ 0)
-                make_face()
+        with BuildSketch(Plane.XZ), Locations((0, params.lift_height)):
+            with BuildLine():
+                l1 = Bezier(params.get_curve_for_button_section()[0])
+                Line(l1 @ 1, l1 @ 0)
+            make_face()
         revolve(axis=Axis.Z)
         with Locations((0, 0, -params.button_height / 2)):
-            Cylinder(radius=params.button_hole_dist + params.button_hole_diameter/4, height=params.lift_height)
+            # lift
+            Cylinder(
+                radius=params.button_hole_dist + params.button_hole_diameter / 4,
+                height=params.lift_height,
+            )
             # inner sink
             with Locations(
                 (
@@ -115,15 +134,36 @@ def build_part(params: ButtonParams) -> Part:
                 )
             ):
                 Sphere(radius=params.inner_sink_diameter / 2, mode=Mode.SUBTRACT)
+
         # holes
-        with PolarLocations(
-            radius=params.button_hole_dist, count=params.button_hole_count
+        with (
+            PolarLocations(
+                radius=params.button_hole_dist, count=params.button_hole_count
+            ),
+            Locations((0, 0, params.button_height / 2)),
         ):
-            with Locations((0, 0, params.button_height / 2)):
-                CounterSinkHole(
-                    radius=params.button_hole_diameter / 2,
-                    counter_sink_radius=2 * params.button_hole_fillet,
+            CounterSinkHole(
+                radius=params.button_hole_diameter / 2,
+                counter_sink_radius=2 * params.button_hole_fillet,
+            )
+    button = button.part
+
+    if params.shape_file:
+        with BuildPart() as shape, Locations((0, 0)):
+            shape_face = import_svg(params.shape_file, align=None)[0]
+            shape_face = shape_face.translate(-shape_face.center())
+            with Locations((0, 0, -params.button_height)):
+                extrude(shape_face, params.button_height / 2)
+                extrude(shape_face, -params.button_height / 2)
+
+            with Locations((0, 0, -params.button_height / 2)):
+                # lift
+                Cylinder(
+                    radius=params.button_hole_dist + params.button_hole_diameter / 4,
+                    height=params.lift_height,
                 )
+        button = button & shape.part
+
     return button
 
 
@@ -141,7 +181,7 @@ def main(
 
             show(button)
         case RenderMode.write:
-            export_stl(button.part, filename)
+            export_stl(button, filename)
             print(f'Model rendered in "{filename}"')
         case RenderMode.noop:
             print(f"mode = {mode}")

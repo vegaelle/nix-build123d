@@ -5,9 +5,11 @@ description = "Base CAD development package"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "ipdb",
+    'ipython',
     'build123d>=0.10.0',
     "cadquery-ocp-novtk>=7.9.3.1",
-    "yacv-server==0.10.15",
+    "yacv-server==0.12.1",
     'yacv-server',
     'typer',
 ]
