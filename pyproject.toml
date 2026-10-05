@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     'build123d>=0.10.0',
     "cadquery-ocp-novtk>=7.9.3.1",
+    "typer>=0.27.2",
     "yacv-server==0.10.15",
 ]
 
